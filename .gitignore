@@ -1,0 +1,21 @@
+# Node.js（前端）
+node_modules/
+dist/
+
+# Python（後端）
+venv/
+__pycache__/
+*.pyc
+
+# macOS
+.DS_Store
+
+# 環境變數
+.env
+.env.*
+
+# Log
+*.log
+
+# VS Code 設定（可選）
+.vscode/
