@@ -1,4 +1,4 @@
-###  1. 下載程式碼
+### 1. 下載程式碼
 
 ```bash
 git clone https://github.com/你的帳號/你的repo.git
