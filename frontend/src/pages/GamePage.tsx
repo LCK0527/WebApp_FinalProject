@@ -1,13 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 
-import {
-    hslToRgb,
-    simulateProtanopia,
-    simulateDeuteranopia,
-    simulateTritanopia
-} from '../utils/colorBlind';
-
 interface GameData {
     game_id: number;
     question_number: number;
@@ -16,11 +9,16 @@ interface GameData {
     mode: string;
 }
 
-const GamePage: React.FC = () => {
+interface GamePageProps {
+    username: string;
+}
+
+
+const GamePage: React.FC<GamePageProps> = ({ username }) => {
     const location = useLocation();
-    const initialData = location.state as { game_id: number; colorBlindType?: string; difficulty?: number };
-    const difficulty = initialData.difficulty || 9;
-    const colorBlindType = initialData.colorBlindType || 'none';
+    const initialData = location.state as { game_id: number };
+    const difficulty = location.state?.difficulty || 9;
+    const colorBlindMode = location.state?.colorBlindMode || false;
 
     const [blocks, setBlocks] = useState<number[]>([]);
     const [clickedIds, setClickedIds] = useState<number[]>([]);
@@ -28,13 +26,14 @@ const GamePage: React.FC = () => {
     const [hue, setHue] = useState<number>(Math.floor(Math.random() * 360));
 
     const count = blocks.length;
-    const cols = count > 0 ? Math.ceil(Math.sqrt(count)) : 1;
-    const rows = count > 0 ? Math.ceil(count / cols) : 1;
+    const cols  = count > 0 ? Math.ceil(Math.sqrt(count)) : 1;
+    const rows  = count > 0 ? Math.ceil(count / cols) : 1;
 
+
+    // 初始設定
     useEffect(() => {
         setGameId(initialData.game_id);
     }, []);
-
     const [questionNumber, setQuestionNumber] = useState<number>(1);
     const [totalQuestions, setTotalQuestions] = useState<number>(1);
     const [startTime, setStartTime] = useState<number>(0);
@@ -42,6 +41,37 @@ const GamePage: React.FC = () => {
     const [result, setResult] = useState<{ correct: boolean; score: number; answer: number[] } | null>(null);
     const [isFinished, setIsFinished] = useState(false);
     const [finalScore, setFinalScore] = useState<number | null>(null);
+    const [scoreSubmited, setScoreSubmited] = useState(false); // New state
+
+    const submitScoreToLeaderboard = async (user: string, score: number) => {
+        if (!user) {
+            console.error("Cannot submit score: missing username or score.");
+            return;
+        }
+        try {
+            const response = await fetch('http://localhost:8000/submit_score', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ username: user, score: score }),
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                console.error(`Error submitting score to leaderboard: ${errorData.detail || 'Unknown error'}`);
+                // Optionally, display a user-friendly error message here
+            } else {
+                const data = await response.json();
+                console.log('Score submitted successfully! Updated Top Scores:', data.top_scores);
+                setScoreSubmited(true); // Mark as submitted
+                // Optionally, you might want to update a local state with top_scores to display immediately
+            }
+        } catch (error) {
+            console.error('Network error during leaderboard score submission:', error);
+            // Optionally, display a network error message
+        }
+    };
 
     const fetchNextQuestion = () => {
         fetch(`http://localhost:8000/next_question?game_id=${gameId}`)
@@ -53,6 +83,10 @@ const GamePage: React.FC = () => {
                         .then(res => res.json())
                         .then(scoreData => {
                             setFinalScore(scoreData.total_score);
+                            if (username && scoreData.total_score !== null && !scoreSubmited) {
+                                console.log(username, scoreData.total_score)
+                                submitScoreToLeaderboard(username, scoreData.total_score);
+                            }
                         });
                     return;
                 }
@@ -70,7 +104,7 @@ const GamePage: React.FC = () => {
     };
 
     useEffect(() => {
-        if (gameId) fetchNextQuestion();
+        if (gameId) fetchNextQuestion();  // 加入保護條件
     }, [gameId]);
 
     const handleClick = (id: number) => {
@@ -101,44 +135,57 @@ const GamePage: React.FC = () => {
             {!isFinished ? (
                 <>
                     <h2>第 {questionNumber} / {totalQuestions} 題：請依序點擊色塊</h2>
+                    {/* 以 grid 方式排列，依照 cols × rows 動態設定 */}
                     <div
-                        style={{
-                            display: 'grid',
-                            gridTemplateColumns: `repeat(${cols}, 90px)`,
-                            gridTemplateRows: `repeat(${rows}, 90px)`,
-                            gap: '10px',
-                            justifyContent: 'center',
-                            margin: 'auto'
-                        }}
+                    style={{
+                        display: 'grid',
+                        gridTemplateColumns: `repeat(${cols}, 90px)`,
+                        gridTemplateRows: `repeat(${rows}, 90px)`,
+                        gap: '10px',
+                        justifyContent: 'center',
+                        margin: 'auto'
+                    }}
                     >
-                        {blocks.map((blockValue, index) => {
-                            const t = blockValue / (blocks.length - 1);
-                            const lightness = 20 + t * 60;
-                            let [r, g, b] = hslToRgb(hue, 80, lightness);
+                    {blocks.map((_, index) => {
+                        const t = index / (blocks.length - 1);
 
-                            if (colorBlindType === 'protanopia') {
-                                ({ r, g, b } = simulateProtanopia(r, g, b));
-                            } else if (colorBlindType === 'deuteranopia') {
-                                ({ r, g, b } = simulateDeuteranopia(r, g, b));
-                            } else if (colorBlindType === 'tritanopia') {
-                                ({ r, g, b } = simulateTritanopia(r, g, b));
-                            }
-
-                            return (
-                                <div
-                                    key={index}
-                                    onClick={() => handleClick(blocks[index])}
-                                    style={{
-                                        width: '90px',
-                                        height: '90px',
-                                        boxSizing: 'border-box',
-                                        backgroundColor: `rgb(${Math.round(r)}, ${Math.round(g)}, ${Math.round(b)})`,
-                                        cursor: 'pointer',
-                                        border: clickedIds.includes(blocks[index]) ? '4px solid black' : 'none',
-                                    }}
-                                />
-                            );
-                        })}
+                        if (colorBlindMode) {
+                        // 色盲模式：固定藍色系，依序用亮度漸層
+                        const hueCB = 240;
+                        const lightness = 30 + t * 50;  // 30% → 80%
+                        return (
+                            <div
+                            key={index}
+                            onClick={() => handleClick(blocks[index])}
+                            style={{
+                                width: '90px',
+                                height: '90px',
+                                boxSizing: 'border-box',
+                                backgroundColor: `hsl(${hueCB}, 80%, ${lightness}%)`,
+                                cursor: 'pointer',
+                                border: clickedIds.includes(blocks[index]) ? '4px solid black' : 'none',
+                            }}
+                            />
+                        );
+                        } else {
+                        // 一般模式：隨機 hue，依序用更大亮度範圍漸層
+                        const lightness = 20 + t * 60;  // 20% → 80%
+                        return (
+                            <div
+                            key={index}
+                            onClick={() => handleClick(blocks[index])}
+                            style={{
+                                width: '90px',
+                                height: '90px',
+                                boxSizing: 'border-box',
+                                backgroundColor: `hsl(${hue}, 80%, ${lightness}%)`,
+                                cursor: 'pointer',
+                                border: clickedIds.includes(blocks[index]) ? '4px solid black' : 'none',
+                            }}
+                            />
+                        );
+                        }
+                    })}
                     </div>
 
                     {!isSubmitted ? (
