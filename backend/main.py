@@ -9,7 +9,7 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["http://localhost:5173"],  # 你的前端端口
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -20,14 +20,16 @@ results = []
 game_counter = 1
 
 class GameInitRequest(BaseModel):
-    count: int
-    mode: str
+    difficulty: str  # 'easy', 'medium', 'hard'
+    color_blind_type: str  # 'normal', 'protanopia', 'deuteranopia', 'tritanopia'
+    game_mode: str  # 'color_sequence', 'memory_match'
     total_questions: int = 5  # 預設 5 題
 
 class SubmitAnswerRequest(BaseModel):
     game_id: int
     answer: List[int]
     time_used: float
+    errors_count: int # 新增錯誤次數
 
 class LoginRequest(BaseModel):
     username: str
@@ -130,21 +132,50 @@ def start_game(data: GameInitRequest):
     game_id = game_counter
     game_counter += 1
 
+    # 根據難度設定色塊數量
+    block_count = {
+        'easy': 6,
+        'medium': 9,
+        'hard': 12
+    }.get(data.difficulty, 9)  # 預設為中等難度
+
     questions = []
-    for _ in range(data.total_questions):
-        block_order = list(range(data.count))
-        shuffle(block_order)
-        correct_order = sorted(block_order)
+    if data.game_mode == 'color_sequence':
+        # 顏色序列模式
+        for _ in range(data.total_questions):
+            block_order = list(range(block_count))
+            shuffle(block_order)
+            correct_order = sorted(block_order)
+            questions.append({
+                "blocks": block_order,
+                "answer": correct_order,
+            })
+    else:
+        # 記憶配對模式
+        # 根據難度設定記憶配對的色塊數量 (必須是偶數)
+        block_count = {
+            'easy': 12,  # 6 對
+            'medium': 16, # 8 對
+            'hard': 20   # 10 對
+        }.get(data.difficulty, 16) # 預設為中等難度 (16 個色塊)
+
+        # 在記憶配對模式中，我們只需要一題
+        # blocks 需要包含成對的顏色，所以我們需要 block_count / 2 種顏色，每種兩個
+        colors = list(range(block_count // 2)) * 2
+        shuffle(colors)
+
         questions.append({
-            "blocks": block_order,
-            "answer": correct_order,
+            "blocks": colors,
+            "answer": colors,  # 在記憶模式中，答案就是原始順序 (用於驗證，實際遊戲邏輯在前端)
         })
 
     games[game_id] = {
         "id": game_id,
-        "mode": data.mode,
+        "mode": data.color_blind_type,
+        "game_mode": data.game_mode,
+        "count": block_count,
         "current_question": 0,
-        "total_questions": data.total_questions,
+        "total_questions": len(questions),
         "questions": questions,
         "score": 0,
         "history": []
@@ -156,54 +187,82 @@ def start_game(data: GameInitRequest):
     }
 
 @app.get("/next_question")
-def get_next_question(game_id: int):
-    game = games.get(game_id)
-    if not game:
-        return {"error": "Game not found"}
-
-    cq = game["current_question"]
-    if cq >= game["total_questions"]:
-        return {"finished": True}
-
-    question = game["questions"][cq]
-    game["current_question"] += 1
-
-    return {
-        "game_id": game_id,
-        "question_number": cq + 1,
-        "total_questions": game["total_questions"],
-        "blocks": question["blocks"],
-        "mode": game["mode"]
-    }
+async def next_question(game_id: int):
+    try:
+        game = games.get(game_id)
+        if not game:
+            return {"error": "Game not found", "finished": True}
+        
+        # 檢查是否超過題目總數
+        if game["current_question"] >= len(game["questions"]):
+            return {"finished": True}
+        
+        # 取得「當前」題目索引 (不要自動+1)
+        current_index = game["current_question"]
+        current_question = game["questions"][current_index]
+        
+        return {
+            "blocks": current_question["blocks"],
+            "question_number": current_index + 1,  # 顯示用題號
+            "total_questions": game["total_questions"],  # 使用遊戲初始化時設定的總題數
+            "finished": False
+        }
+    except Exception as e:
+        return {"error": str(e), "finished": True}
 
 @app.post("/submit_answer")
-def submit_answer(data: SubmitAnswerRequest):
-    game = games.get(data.game_id)
-    if not game:
-        return {"error": "Game not found"}
+async def submit_answer(data: SubmitAnswerRequest):
+    try:
+        game = games.get(data.game_id)
+        if not game:
+            return {"error": "Game not found"}
+            
+        current_index = game["current_question"]
+        current_question = game["questions"][current_index]
+        correct_answer = current_question["answer"]
 
-    q_index = game["current_question"] - 1
-    if q_index < 0 or q_index >= len(game["questions"]):
-        return {"error": "Invalid question index"}
+        # --- 新的計分邏輯 --- #
+        block_count = game.get("count", 9) # 獲取難度/色塊數量，預設 9
 
-    correct = (data.answer == game["questions"][q_index]["answer"])
-    score = 100 if correct else 0
-    game["score"] += score
+        # 設定時間限制 (可根據 block_count 調整)
+        # 這裡使用一個簡單的公式作為例子，可以根據需要調整
+        time_limit = 5 + 1.2**(block_count - 6)
+        if block_count < 6: # 確保小於6塊時也有個基礎時間
+             time_limit = 10
 
-    record = {
-        "question": q_index + 1,
-        "answer": data.answer,
-        "correct": correct,
-        "score": score,
-        "time_used": data.time_used
-    }
-    game["history"].append(record)
+        # 計算基礎分數 (基於錯誤次數)
+        base_score = max(0, 100 - data.errors_count * 5)
 
-    return {
-        "correct": correct,
-        "score": score,
-        "answer": game["questions"][q_index]["answer"]
-    }
+        # 計算時間得分 (在時間限制內完成)
+        time_score = max(0, (time_limit - data.time_used) * 2) # 每秒獎勵 2 分，可調整
+
+        # 計算最終分數
+        # 分數 = 基礎分數 + 時間得分，並確保不低於 0 且不超過某個上限 (例如 200)
+        score = int(max(0, min(200, base_score + time_score)))
+
+        # --- 計分邏輯結束 --- #
+        
+        game["score"] += score
+        game["current_question"] += 1
+        
+        # 記錄詳細數據
+        game["history"].append({
+            "question": game["current_question"],
+            "correct_answer": correct_answer,
+            "user_answer": data.answer, 
+            "time_used": data.time_used,
+            "score_breakdown": {
+                "accuracy": 1.0, 
+                "time_bonus": max(0, (time_limit - data.time_used) / time_limit) if time_limit > 0 else 0 # 這裡的時間獎勵計算方式可以改變，或者記錄原始的 time_used
+            },
+            "errors_count": data.errors_count, 
+            "score": score 
+        })
+        
+        return {"correct": data.answer == correct_answer, "score": score}
+    except Exception as e:
+        return {"error": str(e)}
+
 
 @app.get("/total_score")
 def total_score(game_id: int):

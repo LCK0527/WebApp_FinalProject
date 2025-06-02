@@ -9,7 +9,7 @@ import Button from 'react-bootstrap/Button';
 
 interface NavBarCompProps {
     username: string;
-    isLoggedIn: boolean; 
+    isLoggedIn: boolean;
     setUsername: (username: string) => void;
     setIsLoggedIn: (isLoggedIn: boolean) => void;
 
@@ -17,56 +17,49 @@ interface NavBarCompProps {
 
 const NavBarComp: React.FC<NavBarCompProps> = ({ username, isLoggedIn, setUsername, setIsLoggedIn }) => {
     const navigate = useNavigate();
+    const [expanded, setExpanded] = useState(false);
+
     const onLogout = () => {
         setIsLoggedIn(false);
         setUsername("");
         navigate('/');
+        setExpanded(false);
+    };
+
+    const handleNavLinkClick = () => {
+        setExpanded(false);
     };
 
     return (
-        <Navbar expand="lg" className="bg-body-tertiary">
-            <Container>
-                <Navbar.Brand
-                    as={Link}
-                    to={{
-                        pathname: "/", // The target path
-                        state: { // The state object you want to pass
-                            username: username,
-                            isLoggedIn: isLoggedIn
-                            // You can add any other state variables here
-                        }
-                    }}
-                >
-                    Home
-                </Navbar.Brand>
+        <Navbar
+            expand="lg"
+            bg="light"
+            variant="light"
+            className="w-100"
+            style={{ backgroundColor: "#f6f6f6" }}
+            expanded={expanded}
+            onToggle={setExpanded}
+        >
+            <Container fluid>
+                <Navbar.Brand as={Link} to="/" onClick={handleNavLinkClick}>Home</Navbar.Brand>
+                <Navbar.Toggle aria-controls="basic-navbar-nav" />
                 <Navbar.Collapse id="basic-navbar-nav">
                     <Nav className="me-auto">
-                        <Nav.Link 
-                            as={Link}
-                            to={{
-                                pathname: "/rank", 
-                                state: { 
-                                    username: username,
-                                    isLoggedIn: isLoggedIn
-                                }
-                            }}
-                        >
-                            Rank
-                        </Nav.Link>
+                        <Nav.Link as={Link} to="/rank" onClick={handleNavLinkClick}>排行榜</Nav.Link>
                         {isLoggedIn ? (
-                            <Button variant="light" onClick={onLogout}>
-                                Log out
-                            </Button>
+                            <>
+                                <Button variant="light" onClick={onLogout}>
+                                    登出
+                                </Button>
+                            </>
                         ) : (
                             <>
-                                <Nav.Link href="/login">Log in</Nav.Link>
-                                <Nav.Link href="/newAccount">Create Account</Nav.Link>
+                                <Nav.Link as={Link} to="/login" onClick={handleNavLinkClick}>登入</Nav.Link>
+                                <Nav.Link as={Link} to="/newAccount" onClick={handleNavLinkClick}>註冊</Nav.Link>
                             </>
                         )}
-                        
-                        
                     </Nav>
-                 </Navbar.Collapse>
+                </Navbar.Collapse>
             </Container>
         </Navbar>
   );

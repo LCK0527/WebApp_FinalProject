@@ -33,7 +33,7 @@ npm run dev        # 啟動前端開發伺服器
 
 ```bash
 cd backend
-python -m venv venv             # 若尚未建立虛擬環境
+python3 -m venv venv             # 若尚未建立虛擬環境
 source venv/bin/activate        # 啟動虛擬環境（Windows 請用 venv\Scripts\activate）
 pip install -r requirements.txt # 安裝 FastAPI 套件
 uvicorn main:app --reload       # 啟動後端伺服器

@@ -1,4 +1,4 @@
-import { Form, Button, Container } from 'react-bootstrap';
+import { Form, Button } from 'react-bootstrap';
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Alert from 'react-bootstrap/Alert';
@@ -76,9 +76,21 @@ const Login:React.FC<LoginPageProps> = ({ username, isLoggedIn, setUsername, set
     };
 
     return (
-        <Container className="mt-5" style={{ maxWidth: '350px' }}>
-        <h2 className="mb-4 text-center">Login</h2>
-        {error && ( // If 'error' state is not null/empty string, render the Alert
+        <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            minHeight: '100vh', 
+            width: '100vw',
+            backgroundColor: '#f6f6f6', 
+            fontFamily: 'Arial, sans-serif',
+            margin: 0,
+            padding: '20px 0' 
+        }}>
+        <h2 className="mb-4 text-center">Sign up</h2>
+        <div style={{ maxWidth: '350px' }}>
+        {error && (
             <Alert variant="danger" onClose={() => setError(null)} dismissible>
                 {error}
             </Alert>
@@ -115,7 +127,8 @@ const Login:React.FC<LoginPageProps> = ({ username, isLoggedIn, setUsername, set
               Login
             </Button>
         </Form>
-    </Container>
+        </div>
+    </div>
   );
 };
 

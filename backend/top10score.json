@@ -1,5 +1,29 @@
 [
     {
+        "username": "LCK",
+        "score": 529
+    },
+    {
+        "username": "user123",
+        "score": 514
+    },
+    {
+        "username": "",
+        "score": 514
+    },
+    {
+        "username": "LCK",
+        "score": 496
+    },
+    {
+        "username": "",
+        "score": 496
+    },
+    {
+        "username": "LCK",
+        "score": 50
+    },
+    {
         "username": "test1",
         "score": 40
     },
@@ -14,29 +38,5 @@
     {
         "username": "test",
         "score": 6
-    },
-    {
-        "username": "test",
-        "score": 4
-    },
-    {
-        "username": "test",
-        "score": 3
-    },
-    {
-        "username": "test5",
-        "score": 1
-    },
-    {
-        "username": "test",
-        "score": 0
-    },
-    {
-        "username": "test",
-        "score": 0
-    },
-    {
-        "username": "test3",
-        "score": 0
     }
 ]

@@ -1,8 +1,9 @@
 #root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
+  width: 100vw;
+  min-height: 100vh;
   text-align: center;
+  margin: 0;
+  padding: 0;
 }
 
 .logo {
@@ -39,4 +40,30 @@
 
 .read-the-docs {
   color: #888;
+}
+
+.navbar {
+  background-color: transparent !important;
+}
+
+@media (prefers-color-scheme: dark) {
+  body, #root {
+    background-color: #181818 !important;
+    color: #f1f1f1 !important;
+  }
+  .navbar, .navbar * {
+    background-color: #181818 !important;
+    color: #f1f1f1 !important;
+    border-color: #333 !important;
+  }
+  .btn, .btn-light {
+    background-color: #333 !important;
+    color: #f1f1f1 !important;
+    border-color: #444 !important;
+  }
+  .form-control, input, select, textarea {
+    background-color: #222 !important;
+    color: #f1f1f1 !important;
+    border-color: #444 !important;
+  }
 }

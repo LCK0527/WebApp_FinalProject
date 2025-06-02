@@ -1,4 +1,4 @@
-import { Form, Button, Container } from 'react-bootstrap';
+import { Form, Button, Alert } from 'react-bootstrap';
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
@@ -72,8 +72,25 @@ const Login:React.FC<LoginPageProps> = ({ username, setUsername, isLoggedIn, set
     };
 
     return (
-        <Container className="mt-5" style={{ maxWidth: '350px' }}>
+        <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            minHeight: '100vh', 
+            width: '100vw',
+            backgroundColor: '#f6f6f6', 
+            fontFamily: 'Arial, sans-serif',
+            margin: 0,
+            padding: '20px 0' 
+        }}>
         <h2 className="mb-4 text-center">Login</h2>
+        <div style={{ maxWidth: '350px' }}>
+        {error && (
+            <Alert variant="danger" onClose={() => setError(null)} dismissible>
+                {error}
+            </Alert>
+        )}
         <Form onSubmit={handleLoginAttempt}>
             <Form.Group className="mb-3" controlId="formUsername">
                 <Form.Label>Username</Form.Label>
@@ -106,7 +123,8 @@ const Login:React.FC<LoginPageProps> = ({ username, setUsername, isLoggedIn, set
               Login
             </Button>
         </Form>
-    </Container>
+        </div>
+    </div>
   );
 };
 
